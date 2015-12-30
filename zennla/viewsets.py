@@ -19,9 +19,8 @@ class ModelViewSet(webapp2.RequestHandler):
         request method (``get()``, ``post()`` etc).
         """
         request = self.request
-        method_name = request.route.handler_method
-        if not method_name:
-            method_name = _normalize_handler_method(request.method)
+        method_name = request.route.handler_method or \
+            request.method.lower().replace('-', '_')
 
         method = getattr(self, method_name, None)
         if method is None:
@@ -29,7 +28,7 @@ class ModelViewSet(webapp2.RequestHandler):
             # The response MUST include an Allow header containing a
             # list of valid methods for the requested resource.
             # http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.6
-            valid = ', '.join(_get_handler_methods(self))
+            valid = ', '.join(self._get_handler_methods())
             self.abort(405, headers=[('Allow', valid)])
 
         # The handler only receives *args if no named variables are set.
@@ -64,7 +63,7 @@ class ModelViewSet(webapp2.RequestHandler):
         self.response.write(data)
 
     def retrieve(self, *args, **kwargs):
-        obj = self.get_query().filter(**{detail_field:}) # TODO
+        obj = self.get_query().filter()  # TODO
         serializer = self.get_serializer_class()()
         data = serializer.serialize(obj)
         self.response.write(data)
@@ -79,14 +78,14 @@ class ModelViewSet(webapp2.RequestHandler):
         data = json.loads(self.request.body)
         serializer = self.get_serializer_class()()
         updated_obj = serializer.update(
-            detail_field, data, partial=kwargs.get('partial', False)
+            data, partial=kwargs.get('partial', False)
         )
         self.response.write(serializer.serialize(updated_obj))
 
     def delete(self, *args, **kwargs):
-        obj = self.get_query().get() # TODO
+        obj = self.get_query().get()  # TODO
         obj.delete()
-        self.response.status_int = HTTP_204_NO_CONTENT
+        self.response.status_int = http.HTTP_204_NO_CONTENT
 
     def patch(self, *args, **kwargs):
         kwargs['partial'] = True

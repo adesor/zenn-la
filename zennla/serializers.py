@@ -22,8 +22,7 @@ class ModelSerializer(object):
                 type=type(model).__name__
             )
         )
-        validated_data = self.validate(data)
-        obj = model.get_by_id()
+        self.validate(data)
 
     def create(self, data, model=None):
         return self.save(data=data, type='create', model=model)
@@ -33,14 +32,14 @@ class ModelSerializer(object):
             include=self.include_fields,
             exclude=self.exclude_fields
         )
-        for key, value in translate_fields.iteritems():
+        for key, value in self.translate_fields.iteritems():
             dct[value] = dct.pop(key)
         for key in dct:
             dct[key] = getattr(self, 'get_' + key, lambda _: dct[key])(obj)
 
     def serialize(self, serializable):
         if isinstance(serializable, ndb.Model):
-            return json.dumps(to_dict_repr(serializable))
+            return json.dumps(self.to_dict_repr(serializable))
         elif isinstance(serializable, ndb.Query):
             return json.dumps([
                 self.to_dict_repr(obj) for obj in serializable
