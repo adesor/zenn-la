@@ -1,0 +1,2 @@
+pyflakes==1.0.0
+wsgiref==0.1.2
