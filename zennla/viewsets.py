@@ -7,6 +7,7 @@ class ModelViewSet(webapp2.RequestHandler):
     query = None
     serializer_class = None
 
+
     def dispatch(self):
         """Dispatches the request.
 
@@ -79,9 +80,7 @@ class ModelViewSet(webapp2.RequestHandler):
     def put(self, *args, **kwargs):
         data = json.loads(self.request.body)
         serializer = self.get_serializer_class()()
-        updated_obj = serializer.update(
-            data, partial=kwargs.get('partial', False)
-        )
+        updated_obj = serializer.update(data=data, id=kwargs.values()[0])
         self.response.write(serializer.serialize(updated_obj))
 
     def delete(self, *args, **kwargs):
