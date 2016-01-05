@@ -84,8 +84,9 @@ class ModelViewSet(webapp2.RequestHandler):
         self.response.write(serializer.serialize(updated_obj))
 
     def delete(self, *args, **kwargs):
-        obj = self.get_query().get()  # TODO
-        obj.delete()
+        serializer = self.get_serializer_class()()
+        obj = serializer.get_obj(id=kwargs.values()[0])
+        obj.key.delete()
         self.response.status_int = http.HTTP_204_NO_CONTENT
 
     def patch(self, *args, **kwargs):
