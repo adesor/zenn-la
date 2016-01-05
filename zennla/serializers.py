@@ -31,6 +31,7 @@ class ModelSerializer(object):
             include=self.include_fields,
             exclude=self.exclude_fields
         )
+        dct['id'] = obj.key.id()
         for key, value in self.translate_fields.iteritems():
             dct[value] = dct.pop(key)
         for key in dct:
@@ -63,7 +64,11 @@ class ModelSerializer(object):
                     type=type(model).__name__
                 )
             )
+        try:
+            id = int(id)
+        except ValueError:
+            pass
         obj = model() if id is None else model.get_by_id(id)
         if id is not None and obj is None:
-            raise ValidationError("Object with id {id} not found".format(id))
+            raise ValidationError("Object with id {id} not found".format(id=id))
         return obj

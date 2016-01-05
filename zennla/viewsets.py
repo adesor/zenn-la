@@ -33,10 +33,14 @@ class ModelViewSet(webapp2.RequestHandler):
             args = ()
 
         try:
-            getattr(self, 'pre_' + method_name, lambda: True)(*args, **kwargs)
+            pre_method_handler = getattr(self, 'pre_' + method_name, None)
+            if pre_method_handler is not None:
+                pre_method_handler(*args, **kwargs)
             # TODO - Handle validation error
             response = method(*args, **kwargs)
-            getattr(self, 'post_' + method_name, lambda: True)(*args, **kwargs)
+            post_method_handler = getattr(self, 'post_' + method_name, None)
+            if post_method_handler is not None:
+                post_method_handler(*args, **kwargs)
             self.response.headers['Content-Type'] = 'application/json'
             return response
         except Exception, e:
@@ -62,7 +66,7 @@ class ModelViewSet(webapp2.RequestHandler):
 
     def retrieve(self, *args, **kwargs):
         serializer = self.get_serializer_class()()
-        obj = serializer.get_obj(key=kwargs.values()[0])
+        obj = serializer.get_obj(id=kwargs.values()[0])
         data = serializer.serialize(obj)
         self.response.write(data)
 
