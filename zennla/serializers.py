@@ -70,5 +70,7 @@ class ModelSerializer(object):
             pass
         obj = model() if id is None else model.get_by_id(id)
         if id is not None and obj is None:
-            raise ValidationError("Object with id {id} not found".format(id=id))
+            raise ValidationError(
+                "Object with id {id} not found".format(id=id)
+            )
         return obj
