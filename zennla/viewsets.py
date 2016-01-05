@@ -7,10 +7,6 @@ class ModelViewSet(webapp2.RequestHandler):
     query = None
     serializer_class = None
 
-    def __init__(self):
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.status_int = http.HTTP_200_OK
-
     def dispatch(self):
         """Dispatches the request.
 
@@ -37,9 +33,11 @@ class ModelViewSet(webapp2.RequestHandler):
             args = ()
 
         try:
-            getattr(self, 'pre_' + method_name, lambda _: _)(*args, **kwargs)
+            getattr(self, 'pre_' + method_name, lambda: True)(*args, **kwargs)
+            # TODO - Handle validation error
             response = method(*args, **kwargs)
-            getattr(self, 'post_' + method_name, lambda _: _)(*args, **kwargs)
+            getattr(self, 'post_' + method_name, lambda: True)(*args, **kwargs)
+            self.response.headers['Content-Type'] = 'application/json'
             return response
         except Exception, e:
             return self.handle_exception(e, self.app.debug)
@@ -63,8 +61,8 @@ class ModelViewSet(webapp2.RequestHandler):
         self.response.write(data)
 
     def retrieve(self, *args, **kwargs):
-        obj = self.get_query().filter()  # TODO
         serializer = self.get_serializer_class()()
+        obj = serializer.get_obj(key=kwargs.values()[0])
         data = serializer.serialize(obj)
         self.response.write(data)
 

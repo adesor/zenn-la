@@ -6,26 +6,25 @@ class NonSerializableException(Exception):
     pass
 
 
+class ValidationError(Exception):
+    pass
+
+
 class ModelSerializer(object):
     include_fields = None
     exclude_fields = None
     translate_fields = {}
     model = None
 
-    def save(self, data, type, model=None):
-        # type = 'create, update, partial update'
-        # TODO
-        model = model or self.model
-        assert (
-            isinstance(model, ndb.Model),
-            "Expected an NDB model. Got {type} instead".format(
-                type=type(model).__name__
-            )
-        )
-        self.validate(data)
+    @ndb.transactional
+    def _save(self, data, instance):
+        validated_data = self.validate(data)
+        instance.populate(**validated_data)
+        instance.put()
+        return instance
 
     def create(self, data, model=None):
-        return self.save(data=data, type='create', model=model)
+        return self._save(data=data, instance=self.get_obj(model=model))
 
     def to_dict_repr(self, obj):
         dct = obj.to_dict(
@@ -36,20 +35,35 @@ class ModelSerializer(object):
             dct[value] = dct.pop(key)
         for key in dct:
             dct[key] = getattr(self, 'get_' + key, lambda _: dct[key])(obj)
+        return dct
 
     def serialize(self, serializable):
         if isinstance(serializable, ndb.Model):
             return json.dumps(self.to_dict_repr(serializable))
         elif isinstance(serializable, ndb.Query):
+            serializable = serializable.fetch()
             return json.dumps([
                 self.to_dict_repr(obj) for obj in serializable
             ])
-        else:
-            raise NonSerializableException()
+        raise NonSerializableException()  # TODO
 
-    def update(self, data, model=None, partial=False):
-        return self.save(data, model, type='partial_update', model=model)
+    def update(self, data, id, model=None, partial=False):
+        return self._save(data, instance=self.get_obj(id=id, model=model))
 
-    def validate(self):
+    def validate(self, data):
         # TODO
-        pass
+        return data
+
+    def get_obj(self, id=None, model=None):
+        model = model or self.model
+        if not isinstance(model, ndb.model.MetaModel):
+            # TODO
+            raise ValidationError(
+                "Expected an NDB model. Got {type} instead".format(
+                    type=type(model).__name__
+                )
+            )
+        obj = model() if id is None else model.get_by_id(id)
+        if id is not None and obj is None:
+            raise ValidationError("Object with id {id} not found".format(id))
+        return obj
