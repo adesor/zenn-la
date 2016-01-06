@@ -1,13 +1,6 @@
 import json
 from google.appengine.ext import ndb
-
-
-class NonSerializableException(Exception):
-    pass
-
-
-class ValidationError(Exception):
-    pass
+from zennla.exceptions import NonSerializableException, ValidationError
 
 
 class ModelSerializer(object):
@@ -46,7 +39,11 @@ class ModelSerializer(object):
             return json.dumps([
                 self.to_dict_repr(obj) for obj in serializable
             ])
-        raise NonSerializableException()  # TODO
+        raise NonSerializableException(
+            "Object of type {type} is not serializable".format(
+                type=type(serializable).__name__
+            )
+        )
 
     def update(self, data, id, model=None, partial=False):
         return self._save(data, instance=self.get_obj(id=id, model=model))
@@ -58,7 +55,6 @@ class ModelSerializer(object):
     def get_obj(self, id=None, model=None):
         model = model or self.model
         if not isinstance(model, ndb.model.MetaModel):
-            # TODO
             raise ValidationError(
                 "Expected an NDB model. Got {type} instead".format(
                     type=type(model).__name__

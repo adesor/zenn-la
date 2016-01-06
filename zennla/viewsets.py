@@ -1,6 +1,7 @@
 import json
 import webapp2
 import http
+from zennla.exceptions import APIException
 
 
 class ModelViewSet(webapp2.RequestHandler):
@@ -38,7 +39,13 @@ class ModelViewSet(webapp2.RequestHandler):
             if pre_method_handler is not None:
                 pre_method_handler(*args, **kwargs)
             # TODO - Handle validation error
-            response = method(*args, **kwargs)
+            try:
+                response = method(*args, **kwargs)
+            except APIException as e:
+                self.response.headers['Content-Type'] = 'application/json'
+                self.response.write(e.detail)
+                self.response.status_int = e.status_code
+                return
             post_method_handler = getattr(self, 'post_' + method_name, None)
             if post_method_handler is not None:
                 post_method_handler(*args, **kwargs)
