@@ -55,7 +55,7 @@ class ModelSerializer(object):
         properties = model._properties
         for prop_name, prop in properties.iteritems():
             field_value = data.get(
-                translate_fields.get(prop_name), data.get(prop_name)
+                self.translate_fields.get(prop_name), data.get(prop_name)
             )
             field_validation_method = getattr(
                 self, 'validate_' + prop_name, None
