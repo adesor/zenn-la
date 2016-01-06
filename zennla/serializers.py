@@ -54,18 +54,22 @@ class ModelSerializer(object):
         model = model or self.model
         properties = model._properties
         for prop_name, prop in properties.iteritems():
-            if not data.get(prop_name):
+            field_value = data.get(prop_name)
+            field_validation_method = getattr(
+                self, 'validate_' + prop_name, None
+            )
+            if field_validation_method is not None:
+                field_validation_method(field_value)
+            if field_value is None:
                 if prop._required:
                     raise ValidationError(
                         "Property {name} is required".format(name=prop_name)
                     )
                 else:
-                    validated_data[prop_name] = data.get(prop_name)
+                    validated_data[prop_name] = field_value
             else:
                 try:
-                    validated_data[prop_name] = prop._validate(
-                        data.get(prop_name)
-                    )
+                    validated_data[prop_name] = prop._validate(field_value)
                 except BadValueError as e:
                     raise ValidationError(str(e))
         return validated_data
