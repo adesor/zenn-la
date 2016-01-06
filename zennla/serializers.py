@@ -1,5 +1,6 @@
 import json
 from google.appengine.ext import ndb
+from google.appengine.ext.db import BadValueError
 from zennla.exceptions import NonSerializableException, ValidationError
 
 
@@ -48,9 +49,26 @@ class ModelSerializer(object):
     def update(self, data, id, model=None, partial=False):
         return self._save(data, instance=self.get_obj(id=id, model=model))
 
-    def validate(self, data):
-        # TODO
-        return data
+    def validate(self, data, model=None):
+        validated_data = {}
+        model = model or self.model
+        properties = model._properties
+        for prop_name, prop in properties.iteritems():
+            if not data.get(prop_name):
+                if prop._required:
+                    raise ValidationError(
+                        "Property {name} is required".format(name=prop_name)
+                    )
+                else:
+                    validated_data[prop_name] = data.get(prop_name)
+            else:
+                try:
+                    validated_data[prop_name] = prop._validate(
+                        data.get(prop_name)
+                    )
+                except BadValueError as e:
+                    raise ValidationError(str(e))
+        return validated_data
 
     def get_obj(self, id=None, model=None):
         model = model or self.model

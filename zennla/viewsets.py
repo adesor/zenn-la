@@ -38,7 +38,6 @@ class ModelViewSet(webapp2.RequestHandler):
             pre_method_handler = getattr(self, 'pre_' + method_name, None)
             if pre_method_handler is not None:
                 pre_method_handler(*args, **kwargs)
-            # TODO - Handle validation error
             try:
                 response = method(*args, **kwargs)
             except APIException as e:
