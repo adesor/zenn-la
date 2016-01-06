@@ -1,3 +1,8 @@
+"""
+Common HTTP constants.
+Contains method names and status codes
+"""
+
 GET = 'GET'
 POST = 'POST'
 PUT = 'PUT'

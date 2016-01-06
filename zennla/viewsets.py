@@ -1,3 +1,7 @@
+"""
+Viewsets club together list and detail views
+providing a clean way of handling requests
+"""
 import json
 import webapp2
 import http
@@ -5,9 +9,16 @@ from zennla.exceptions import APIException
 
 
 class ModelViewSet(webapp2.RequestHandler):
+    """
+    ModelViewSet can be used to handle requests on a resource level
+    Can be subclassed to create specialized viewsets for a resource
+    The attributes that can be set are:
+        - `query`: The base query on which all list operations occur
+        - `serializer_class`: The serializers.ModelSerializer class
+                which is to be used for serialization
+    """
     query = None
     serializer_class = None
-
 
     def dispatch(self):
         """Dispatches the request.
@@ -53,48 +64,78 @@ class ModelViewSet(webapp2.RequestHandler):
         except Exception, e:
             return self.handle_exception(e, self.app.debug)
 
-    def get_query(self):
+    def get_query(self, *args, **kwargs):
+        """
+        Return the `query` for the viewset
+        Override and add any pre-filtering required on the queryset
+        """
         return self.query
 
-    def get_serializer_class(self):
+    def get_serializer_class(self, *args, **kwargs):
+        """
+        Return the `serializer_class` for the viewset
+        Override this method to dynamically select a serializer class
+        based on the request
+        """
         return self.serializer_class
 
     def get(self, *args, **kwargs):
+        """
+        Correspond to HTTP GET
+        """
         if args or kwargs:
             self.retrieve(*args, **kwargs)
         else:
             self.list(*args, **kwargs)
 
     def list(self, *args, **kwargs):
-        query = self.get_query()
-        serializer = self.get_serializer_class()()
+        """
+        Handle GET resource-list
+        """
+        query = self.get_query(*args, **kwargs)
+        serializer = self.get_serializer_class(*args, **kwargs)()
         data = serializer.serialize(query)
         self.response.write(data)
 
     def retrieve(self, *args, **kwargs):
-        serializer = self.get_serializer_class()()
+        """
+        Handle GET resource-detail
+        """
+        serializer = self.get_serializer_class(*args, **kwargs)()
         obj = serializer.get_obj(id=kwargs.values()[0])
         data = serializer.serialize(obj)
         self.response.write(data)
 
     def post(self, *args, **kwargs):
+        """
+        Correspond to HTTP POST
+        """
         data = json.loads(self.request.body)
-        serializer = self.get_serializer_class()()
+        serializer = self.get_serializer_class(*args, **kwargs)()
         obj = serializer.create(data=data)
         self.response.write(serializer.serialize(obj))
 
     def put(self, *args, **kwargs):
+        """
+        Correspond to HTTP PUT
+        """
         data = json.loads(self.request.body)
-        serializer = self.get_serializer_class()()
+        serializer = self.get_serializer_class(*args, **kwargs)()
         updated_obj = serializer.update(data=data, id=kwargs.values()[0])
         self.response.write(serializer.serialize(updated_obj))
 
     def delete(self, *args, **kwargs):
-        serializer = self.get_serializer_class()()
+        """
+        Correspond to HTTP DELETE
+        """
+        serializer = self.get_serializer_class(*args, **kwargs)()
         obj = serializer.get_obj(id=kwargs.values()[0])
         obj.key.delete()
         self.response.status_int = http.HTTP_204_NO_CONTENT
 
     def patch(self, *args, **kwargs):
+        """
+        Correspond to HTTP PATCH
+        """
         kwargs['partial'] = True
         self.put(*args, **kwargs)
