@@ -16,9 +16,9 @@ def route(base_url, viewset, detail_field='id',
     The `viewset` must:
         - have `get()`, `post()`, `put()`, `delete()` defined
         or
-        - extend viewset.ModelViewSet
+        - extend `viewset.ModelViewSet`
 
-    The PathPrefixRoute has two routes:
+    The `routes.PathPrefixRoute` has two routes:
         - The list view at `base_url`/ with URI: `base_url`-list
         - The detail view at `base_url`/<id> with URL `base_url`-detail
 
