@@ -1,6 +1,12 @@
 # Zenn-La
 A REST microframework for Google App Engine (webapp2 and ndb)
 
+## Installation:
+Install using `pip`
+```
+$ pip install zennla
+```
+
 ## Example Usage:
 Suppose you have a model named `Pokemon`:
 ```python
