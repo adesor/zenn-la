@@ -76,7 +76,7 @@ class ModelSerializer(object):
                                 )
                             )
                         else:
-                            validated_date[prop_name] = [
+                            validated_data[prop_name] = [
                                 prop._validate(elem) or elem
                                 for elem in field_value
                             ]
