@@ -92,7 +92,7 @@ class ModelViewSet(webapp2.RequestHandler):
                     serializer=self.serializer_class.__name__,
                     viewset=self.__class__.__name__
                 )
-        )
+            )
         return model
 
     def get_query(self, *args, **kwargs):
