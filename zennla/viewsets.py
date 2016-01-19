@@ -87,11 +87,11 @@ class ModelViewSet(webapp2.RequestHandler):
             raise ImproperlyConfigured(
                 "No model associated with viewset or the serializer. "
                 "Either set the `model` attribute of the serializer "
-                "{serializer} or the viewset {viewset} or override " 
+                "{serializer} or the viewset {viewset} or override "
                 "`get_model()` to return an ndb model instance.".format(
-                serializer=self.serializer_class.__name__,
-                viewset=self.__class__.__name__
-            )
+                    serializer=self.serializer_class.__name__,
+                    viewset=self.__class__.__name__
+                )
         )
         return model
 

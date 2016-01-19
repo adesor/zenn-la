@@ -35,7 +35,7 @@ class Filter(object):
                         lookup_field=self.lookup_type
                     )
                 )
-        except BadValueError as e:
+        except BadValueError:
             raise ImproperlyConfigured(
                 "Mismatch in the filter type and the model's field type "
                 "({filter_type} used for {field_type})".format(
