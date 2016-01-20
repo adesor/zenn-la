@@ -8,12 +8,41 @@ from google.appengine.ext.db import BadValueError
 from zennla.exceptions import ImproperlyConfigured, ValidationError
 
 
-class Filter(object):
+class FieldFilter(object):
+    """
+    The base class for all field type filters
+    Extend to create custom Field Filters
+    """
     def __init__(self, field, lookup_type='eq'):
+        """
+        FieldFilter has two base attributes:
+            `field`: The ndb field for which the filter is applicable
+            `lookup_type`: The type of comparison against the value supplied.
+                It can have the following values:
+                - `in`: field value in [list, of, values]
+                - `eq`: field value == value
+                - `ne`: field value != value
+                - `gt`: field value > value
+                - `ge`: field value >= value
+                - `lt`: field value < value
+                - `le`: field value <= value
+        """
         self.field = field
         self.lookup_type = lookup_type
 
+    def get_converted_value(self, value):
+        """
+        Convert the input value to another value
+        Override this method to create filters that take non-string values
+        """
+        return value
+
     def get_filter(self, value):
+        """
+        Return a FilterNode object comparing the `field` with the `value`
+        using the `lookup_type`. You are unlikely to want to override
+        this method.
+        """
         try:
             if self.lookup_type == 'in':
                 if not isinstance(value, (list, tuple)):
@@ -23,10 +52,14 @@ class Filter(object):
                             type=type(value).__name__
                         )
                     )
-                return self.field.IN(value)
+                converted_value = [
+                    self.get_converted_value(elem) for elem in value
+                ]
+                return self.field.IN(converted_value)
             try:
+                converted_value = self.get_converted_value(value)
                 return getattr(operator, self.lookup_type)(
-                    self.field, value
+                    self.field, converted_value
                 )
             except AttributeError:
                 raise ImproperlyConfigured(
@@ -45,10 +78,16 @@ class Filter(object):
             )
 
 
-class NumberFilter(Filter):
-    def get_filter(self, value):
+class NumberFilter(FieldFilter):
+    """
+    Filter for numeric values
+    """
+    def get_converted_value(self, value):
+        """
+        Overridden to convert input value to its numeric equivalent
+        """
         try:
-            number_value = float(value)
+            return float(value)
         except ValueError:
             raise ValidationError(
                 "Value passed for {filter_type} is not a number. "
@@ -57,19 +96,29 @@ class NumberFilter(Filter):
                     value_type=type(value).__name__
                 )
             )
-        return super(NumberFilter, self).get_filter(number_value)
 
 
-class BooleanFilter(Filter):
-    def get_filter(self, value):
-        bool_value = value.lower() not in ('false', '0', 'no', 'f', 'n')
-        return super(BooleanFilter, self).get_filter(bool_value)
+class BooleanFilter(FieldFilter):
+    """
+    Filter for boolean values
+    """
+    def get_converted_value(self, value):
+        """
+        Overridden to convert input value to its boolean equivalent
+        """
+        return value.lower() not in ('false', '0', 'no', 'f', 'n')
 
 
-class StringFilter(Filter):
-    def get_filter(self, value):
+class StringFilter(FieldFilter):
+    """
+    Filter for string values
+    """
+    def get_converted_value(self, value):
+        """
+        Overridden to convert input value to its string equivalent
+        """
         try:
-            str_value = unicode(value)
+            return unicode(value)
         except ValueError:
             raise ValidationError(
                 "Value passed for {filter_type} is not a string. "
@@ -78,14 +127,22 @@ class StringFilter(Filter):
                     value_type=type(value).__name__
                 )
             )
-        return super(StringFilter, self).get_filter(str_value)
 
 
 class FilterSet(object):
+    """
+    A FilterSet is associated with a ViewSet. The FilterSet filters the query
+    based on any FilterSet associated with it.
+    """
     class Meta:
-        filters = []
+        filters = []  # List any FieldFilters that need to be applied here
 
     def get_filters(self, field_values):
+        """
+        Return a generator for all the FilterFields listed in `Meta.filters`
+        `field_values` is a mapping of field names and their values
+        and is used to compare against the FilterFields
+        """
         return (
             getattr(self, filter_name).get_filter(
                 field_values.getall(filter_name)
@@ -98,4 +155,7 @@ class FilterSet(object):
         )
 
     def get_filtered_query(self, query, field_values):
+        """
+        Filter the `query` against the filters listed in `Meta.filters`
+        """
         return query.filter(*self.get_filters(field_values))
