@@ -59,7 +59,6 @@ class SerializerTestCase(unittest.TestCase):
 
     def test__save(self):
         instance = TestModel()
-        filters = self.dict_to_filters()
         count_before__save = TestModel.query(*self.dict_to_filters()).count()
         self.test_serializer._save(self.sample_data, instance)
         count_after__save = TestModel.query(*self.dict_to_filters()).count()
