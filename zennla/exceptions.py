@@ -29,6 +29,14 @@ class APIException(Exception):
         return self.detail
 
 
+class ImproperlyConfigured(APIException):
+    """
+    Raised when there is a problem with the configuration
+    """
+    status_code = http.HTTP_500_INTERNAL_SERVER_ERROR
+    default_detail = '{"detail": "Improperly Configured"}'
+
+
 class NonSerializableException(APIException):
     """
     Raised when a non-serializable object is received by a serializer

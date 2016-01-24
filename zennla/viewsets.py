@@ -5,7 +5,7 @@ providing a clean way of handling requests
 import json
 import webapp2
 import http
-from zennla.exceptions import APIException
+from zennla.exceptions import APIException, ImproperlyConfigured
 
 
 class ModelViewSet(webapp2.RequestHandler):
@@ -17,8 +17,9 @@ class ModelViewSet(webapp2.RequestHandler):
         - `serializer_class`: The serializers.ModelSerializer class
                 which is to be used for serialization
     """
-    query = None
+    model = None
     serializer_class = None
+    filter_backends = []
 
     def dispatch(self):
         """Dispatches the request.
@@ -64,12 +65,42 @@ class ModelViewSet(webapp2.RequestHandler):
         except Exception, e:
             return self.handle_exception(e, self.app.debug)
 
+    def filter_query(self, query):
+        """
+        Filter the query against any filter backends supplied
+        Filter backends are listed by the `filter_backends` attribute.
+        """
+        filtered_query = query
+        for filter_backend in self.filter_backends:
+            filtered_query = filter_backend().get_filtered_query(
+                filtered_query, self.request.GET
+            )
+        return filtered_query
+
+    def get_model(self, *args, **kwargs):
+        """
+        Return the `model` for the viewset
+        Override for any model switching logic
+        """
+        model = self.model or self.serializer_class.model
+        if model is None:
+            raise ImproperlyConfigured(
+                "No model associated with viewset or the serializer. "
+                "Either set the `model` attribute of the serializer "
+                "{serializer} or the viewset {viewset} or override "
+                "`get_model()` to return an ndb model instance.".format(
+                    serializer=self.serializer_class.__name__,
+                    viewset=self.__class__.__name__
+                )
+            )
+        return model
+
     def get_query(self, *args, **kwargs):
         """
         Return the `query` for the viewset
         Override and add any pre-filtering required on the queryset
         """
-        return self.query
+        return self.get_model().query()
 
     def get_serializer_class(self, *args, **kwargs):
         """
@@ -77,6 +108,15 @@ class ModelViewSet(webapp2.RequestHandler):
         Override this method to dynamically select a serializer class
         based on the request
         """
+        if self.serializer_class is None:
+            return ImproperlyConfigured(
+                "No serializer class associated with the viewset {viewset}. "
+                "Set the `serializer_class` attribute of the viewset or "
+                "override `get_serializer_class()` to return a "
+                "`ModelSerializer` class or subclass".format(
+                    viewset=self.__class__.__name__
+                )
+            )
         return self.serializer_class
 
     def get(self, *args, **kwargs):
@@ -92,7 +132,7 @@ class ModelViewSet(webapp2.RequestHandler):
         """
         Handle GET resource-list
         """
-        query = self.get_query(*args, **kwargs)
+        query = self.filter_query(self.get_query(*args, **kwargs))
         serializer = self.get_serializer_class(*args, **kwargs)()
         data = serializer.serialize(query)
         self.response.write(data)

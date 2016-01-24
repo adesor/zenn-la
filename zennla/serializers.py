@@ -64,10 +64,26 @@ class ModelSerializer(object):
                         "Property {name} is required".format(name=prop_name)
                     )
                 else:
-                    validated_data[prop_name] = field_value
+                    validated_data[prop_name] = field_value \
+                        if not prop._repeated else []
             else:
                 try:
-                    validated_data[prop_name] = prop._validate(field_value)
+                    if prop._repeated:
+                        if not isinstance(field_value, (list, tuple)):
+                            raise ValidationError(
+                                "`{field}` should be a list.".format(
+                                    field=prop_name
+                                )
+                            )
+                        else:
+                            validated_data[prop_name] = [
+                                prop._validate(elem) or elem
+                                for elem in field_value
+                            ]
+                    else:
+                        validated_data[prop_name] = prop._validate(
+                            field_value
+                        ) or field_value
                 except BadValueError as e:
                     raise ValidationError(str(e))
         return validated_data
@@ -94,7 +110,7 @@ class ModelSerializer(object):
             )
         try:
             id = int(id)
-        except ValueError:
+        except (TypeError, ValueError):
             pass
         obj = model() if id is None else model.get_by_id(id)
         if id is not None and obj is None:

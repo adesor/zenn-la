@@ -1,11 +1,21 @@
 # Zenn-La
 A REST microframework for Google App Engine (webapp2 and ndb)
 
+##Contents
+* [Installation](#installation)
+* [Example Usage](#example-usage)
+* [Custom Serializers](#custom-serializers)
+* [Validations](#validations)
+* [ViewSets](#viewsets)
+* [Routers](#routers)
+* [Filtering](#filtering)
+
 ## Installation:
 Install using `pip`
 ```
 $ pip install zennla
 ```
+For help with adding third party Python packages in Google App Engine, read [here](https://cloud.google.com/appengine/docs/python/tools/libraries27?hl=en)
 
 ## Example Usage:
 Suppose you have a model named `Pokemon`:
@@ -31,8 +41,8 @@ Define a viewset for this model:
 from zennla.viewsets import ModelViewSet
 
 class PokemonViewSet(ModelViewSet):
-    query = Pokemon.query()
     serializer_class = PokemonSerializer
+    model = Pokemon  # Optional - uses serializer_class's `model` instance by default
 ```
 
 Add a route to your resource linking a base URL to the viewset:
@@ -190,9 +200,13 @@ To define custom viewsets, you can override `get()`, `put()`, `post()` and `dele
 ### Customizing
 - You can also add pre and post method handler hooks to perform any actions. These should be defined as `pre_<handler_method>` or `post_<handler_method>`.
 
+- You can add filtering to the viewsets by listing the FilterSets in the `filter_backends` attribute (Discussed in detail [here](#filtering)).
+
 - Overriding `get_query()`: You can override `get_query()` to perform any filtering of the result set before serialization.
 
 - Overriding `get_serializer_class()`: You can override `get_serializer_class()` to choose a serializer class dynamically.
+
+- Overridding `get_model()`: You can override `get_model()` to choose a model dynamically. Defaults to the model defined by the `model` attribute or, if not defined, the `model` attribute of the `serializer_class`.
 
 ### Example
 
@@ -214,7 +228,7 @@ class PokemonViewSet(ModelViewSet):
 
 
 ## Routers
-Routers provide routing mechanism for resources. It contains a `route()` function which returns a `routes.PathPrefixRoute` (see: https://webapp-improved.appspot.com/guide/routing.html#path-prefix-routes) mapping a request handler `viewset` with a `base_url`.
+Routers provide routing mechanism for resources. It contains a `route()` function which returns a `routes.PathPrefixRoute` (read [here](https://webapp-improved.appspot.com/guide/routing.html#path-prefix-routes)) mapping a request handler `viewset` with a `base_url`.
 
 The `viewset` must:
 - have `get()`, `post()`, `put()`, `delete()` defined
@@ -231,3 +245,56 @@ Optional Parameters:
         Default is [GET, POST]
 - `allowed_detail_methods`: List of HTTP methods allowed for
         detail view. Default is [GET, PUT, DELETE]
+
+
+
+## Filtering
+You can create filters by extending the `FilterSet` class. The `FilterSet` class lists all the filters that need to be applied to a query and contains a method `get_filtered_query()` which filters the query using the listed filters. The FilterSet must have an attribute whose name becomes a query parameter and value is equal to one of the `FieldFilter`s. The `FieldFilter`s defined by default are:
+
+- `NumberFilter`: Use this to make a filter that takes numeric values
+- `BooleanFilter`: Use this to make a filter that takes boolean values
+- `StringFilter`: Use this to make a filter that takes string values
+
+A `FilterField` needs to be specified an ndb model field on which it should be applied. It also has a `lookup_type` attribute which can be used to define the type of lookup. The valid values are:
+- `'eq'`: Check for equality (default)
+- `'in'`: Compare against a list of values
+- `'ne'`: Check for inequality
+- `'le'`: Check for less than or equals (<=)
+- `'ge'`: Check for greater than or equals (>=)
+- `'lt'`: Check for less than (<)
+- `'gt'`: Check for greater than (>)
+
+You can create your own FilterFields by overriding `get_converted_value()` which takes in a raw value (string) and converts it into the format required before any comparisons are done.
+
+### Example
+```python
+from zennla import filters
+
+class PokemonFilter(filters.FilterSet):
+    name = filters.StringFilter(Pokemon.name)
+    type = filters.StringFilter(Pokemon.type, lookup_type='in')
+    num_ge = filters.NumberFilter(Pokemon.number, lookup_type='ge')
+
+class PokemonViewSet(ModelViewSet):
+    serializer_class = PokemonSerializer
+    filter_backends = [PokemonFilter]  # Add the filterset to our viewset
+
+```
+
+```
+{{base_url}}/pokemon/?name='Mewtwo'&type='Grass'&type='Psychic'&type='Electric'&num_ge=75 [GET]
+{
+    "name": "Mewtwo",
+    "type": "Psychic"
+    "number": 150
+}
+
+Response (200):
+[
+    {
+        "name": "Mewtwo",
+        "type": "Psychic"
+        "number": 150
+    }
+]
+```
