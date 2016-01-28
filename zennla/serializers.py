@@ -37,7 +37,11 @@ class ModelSerializer(object):
         """
         validated_data = self.validate(data)
         instance.populate(**validated_data)
+        if hasattr(self, 'pre_save'):
+            self.pre_create(instance, data, validated_data)
         instance.put()
+        if hasattr(self, 'post_save'):
+            self.post_create(instance, data, validated_data)
         return instance
 
     def validate(self, data, model=None):
@@ -64,7 +68,7 @@ class ModelSerializer(object):
                         "Property {name} is required".format(name=prop_name)
                     )
                 else:
-                    validated_data[prop_name] = field_value \
+                    validated_data[prop_name] = prop._default \
                         if not prop._repeated else []
             else:
                 try:

@@ -3,6 +3,7 @@ setup.cfg
 setup.py
 zennla/__init__.py
 zennla/exceptions.py
+zennla/filters.py
 zennla/http.py
 zennla/routers.py
 zennla/serializers.py
