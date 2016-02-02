@@ -29,18 +29,21 @@ class ModelSerializer(object):
     translate_fields = {}
     model = None
 
-    @ndb.transactional
     def _save(self, data, instance):
         """
         Populate and write an `instance` with `data` after validation
         Return the updated `instance`
         """
-        validated_data = self.validate(data)
+        validated_data = self._validate(data)
         instance.populate(**validated_data)
+        if hasattr(self, 'pre_save'):
+            self.pre_save(instance, data, validated_data)
         instance.put()
+        if hasattr(self, 'post_save'):
+            self.post_save(instance, data, validated_data)
         return instance
 
-    def validate(self, data, model=None):
+    def _validate(self, data, model=None):
         """
         Take `data` as the dict containing the input data
         Return a dictionary with the validated data
@@ -49,22 +52,19 @@ class ModelSerializer(object):
         validated_data = {}
         model = model or self.model
         properties = model._properties
+
+        # Perform field level validations
         for prop_name, prop in properties.iteritems():
             field_value = data.get(
                 self.translate_fields.get(prop_name), data.get(prop_name)
             )
-            field_validation_method = getattr(
-                self, 'validate_' + prop_name, None
-            )
-            if field_validation_method is not None:
-                field_validation_method(field_value)
             if field_value is None:
                 if prop._required:
                     raise ValidationError(
                         "Property {name} is required".format(name=prop_name)
                     )
                 else:
-                    validated_data[prop_name] = field_value \
+                    validated_data[prop_name] = prop._default \
                         if not prop._repeated else []
             else:
                 try:
@@ -86,6 +86,17 @@ class ModelSerializer(object):
                         ) or field_value
                 except BadValueError as e:
                     raise ValidationError(str(e))
+
+            # Perform any custom field validations
+            field_validation_method = getattr(
+                self, 'validate_' + prop_name, None
+            )
+            if field_validation_method is not None:
+                field_validation_method(validated_data[prop_name])
+
+        # Perform object level validation
+        if hasattr(self, 'validate'):
+            self.validate(validated_data, model)
         return validated_data
 
     def create(self, data, model=None):
