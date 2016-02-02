@@ -134,6 +134,8 @@ You can override `to_dict_repr` method to define your own dictionary representat
 
 You can also add a method named as `get_<field_name>` to define a custom representation for that field.
 
+You can add pre and post save hooks (methods that run just before and after an object is written to the datastore respectively) by defining `pre_save(self, instance, data, validated_data)` and `post_save(self, instance, data, validated_data)` respectively.
+
 ### Example:
 ```python
 class PokemonSerializer(ModelSerializer):
@@ -159,8 +161,14 @@ class PokemonSerializer(ModelSerializer):
 
 
 ## Validations
-The `ModelSerializer` by default performs a validation for field type on the input data. However, in addition to that, you can add your own field validations.
+The `ModelSerializer` by default performs a validation for field type on the input data. In addition to that, you can add your own field validations. You can also perform object level validations.
 The field validations should be methods in your `ModelSerializer` named as `validate_<field_name>`. The method should raise a `ValidationError` if the input field value is not valid, or return silently.
+You can define any object level validations by defining the `validate(self, data, model)` method.
+
+The validation flow is:
+- basic validations
+- field validations
+- object level validation
 
 ### Example:
 ```python
