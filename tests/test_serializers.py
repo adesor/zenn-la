@@ -54,7 +54,7 @@ class SerializerTestCase(unittest.TestCase):
 
     def test_validate_base_case(self):
         self.assertEqual(
-            self.test_serializer.validate(self.sample_data), self.sample_data
+            self.test_serializer._validate(self.sample_data), self.sample_data
         )
 
     def test__save(self):
