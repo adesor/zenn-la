@@ -29,7 +29,6 @@ class ModelSerializer(object):
     translate_fields = {}
     model = None
 
-    @ndb.transactional
     def _save(self, data, instance):
         """
         Populate and write an `instance` with `data` after validation
