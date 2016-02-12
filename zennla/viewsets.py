@@ -5,7 +5,8 @@ providing a clean way of handling requests
 import json
 import webapp2
 import http
-from zennla.exceptions import APIException, ImproperlyConfigured
+from zennla.renderers import JSONRenderer
+from zennla import exceptions as zennla_exceptions
 
 
 class ModelViewSet(webapp2.RequestHandler):
@@ -20,6 +21,14 @@ class ModelViewSet(webapp2.RequestHandler):
     model = None
     serializer_class = None
     filter_backends = []
+    renderers = [JSONRenderer]
+
+    def __init__(self, *args, **kwargs):
+        super(ModelViewSet, self).__init__(*args, **kwargs)
+        self.media_renderer_map = {
+            renderer.media_type.lower(): renderer
+            for renderer in self.renderers
+        }
 
     def dispatch(self):
         """Dispatches the request.
@@ -45,22 +54,23 @@ class ModelViewSet(webapp2.RequestHandler):
         args, kwargs = request.route_args, request.route_kwargs
         if kwargs:
             args = ()
-
         try:
+            renderer = self.get_renderer()
             pre_method_handler = getattr(self, 'pre_' + method_name, None)
             if pre_method_handler is not None:
                 pre_method_handler(*args, **kwargs)
             try:
                 response = method(*args, **kwargs)
-            except APIException as e:
-                self.response.headers['Content-Type'] = 'application/json'
-                self.response.write(e.detail)
+            except zennla_exceptions.APIException as e:
+                renderer = renderer or JSONRenderer
+                self.response.headers['Content-Type'] = renderer.media_type
+                self.response.write(renderer.render(e.detail))
                 self.response.status_int = e.status_code
                 return
             post_method_handler = getattr(self, 'post_' + method_name, None)
             if post_method_handler is not None:
                 post_method_handler(*args, **kwargs)
-            self.response.headers['Content-Type'] = 'application/json'
+            self.response.headers['Content-Type'] = renderer.media_type
             return response
         except Exception, e:
             return self.handle_exception(e, self.app.debug)
@@ -84,7 +94,7 @@ class ModelViewSet(webapp2.RequestHandler):
         """
         model = self.model or self.serializer_class.model
         if model is None:
-            raise ImproperlyConfigured(
+            raise zennla_exceptions.ImproperlyConfigured(
                 "No model associated with viewset or the serializer. "
                 "Either set the `model` attribute of the serializer "
                 "{serializer} or the viewset {viewset} or override "
@@ -109,7 +119,7 @@ class ModelViewSet(webapp2.RequestHandler):
         based on the request
         """
         if self.serializer_class is None:
-            return ImproperlyConfigured(
+            return zennla_exceptions.ImproperlyConfigured(
                 "No serializer class associated with the viewset {viewset}. "
                 "Set the `serializer_class` attribute of the viewset or "
                 "override `get_serializer_class()` to return a "
@@ -135,7 +145,7 @@ class ModelViewSet(webapp2.RequestHandler):
         query = self.filter_query(self.get_query(*args, **kwargs))
         serializer = self.get_serializer_class(*args, **kwargs)()
         data = serializer.serialize(query)
-        self.response.write(data)
+        self.response.write(self.get_renderer().render(data))
 
     def retrieve(self, *args, **kwargs):
         """
@@ -144,7 +154,7 @@ class ModelViewSet(webapp2.RequestHandler):
         serializer = self.get_serializer_class(*args, **kwargs)()
         obj = serializer.get_obj(id=kwargs.values()[0])
         data = serializer.serialize(obj)
-        self.response.write(data)
+        self.response.write(self.get_renderer(data))
 
     def post(self, *args, **kwargs):
         """
@@ -153,7 +163,9 @@ class ModelViewSet(webapp2.RequestHandler):
         data = json.loads(self.request.body)
         serializer = self.get_serializer_class(*args, **kwargs)()
         obj = serializer.create(data=data)
-        self.response.write(serializer.serialize(obj))
+        self.response.write(
+            self.get_renderer().render(serializer.serialize(obj))
+        )
 
     def put(self, *args, **kwargs):
         """
@@ -162,7 +174,9 @@ class ModelViewSet(webapp2.RequestHandler):
         data = json.loads(self.request.body)
         serializer = self.get_serializer_class(*args, **kwargs)()
         updated_obj = serializer.update(data=data, id=kwargs.values()[0])
-        self.response.write(serializer.serialize(updated_obj))
+        self.response.write(
+            self.get_renderer().render(serializer.serialize(updated_obj))
+        )
 
     def delete(self, *args, **kwargs):
         """
@@ -179,3 +193,17 @@ class ModelViewSet(webapp2.RequestHandler):
         """
         kwargs['partial'] = True
         self.put(*args, **kwargs)
+
+    def get_renderer(self, *args, **kwargs):
+        """
+        Return the renderer to be used to render the response
+        """
+        request_media_type = self.request.headers.get(
+            'Accept', 'application/json'
+        ).lower()
+        renderer = self.media_renderer_map.get(request_media_type)
+        if not renderer:
+            raise zennla_exceptions.UnacceptableRequest(
+                "Could not satisfy the request Accept header"
+            )
+        return renderer
