@@ -41,31 +41,23 @@ class XMLRenderer(BaseRenderer):
     media_type = 'application/xml'
     format = 'xml'
 
-    def _dict_to_xml(self, data_dict, tag=None):
+    def _data_to_xml(self, data, tag=None):
         """
-        Convert the input dict to XML
+        Convert the input data to XML
         """
         tag = tag or 'response'
         elem = ElementTree.Element(tag)
-        if not isinstance(data_dict, dict):
-            elem.text = unicode(data_dict)
+        if isinstance(data, (list, tuple)):
+            for item in data:
+                elem.append(self._dict_to_xml(item, tag=tag or 'list'))
+        elif isinstance(data, dict):
+            for key, value in data.iteritems():
+                elem.append(self._dict_to_xml(value, tag=key))
         else:
-            for key, value in data_dict.iteritems():
-                if isinstance(value, dict):
-                    child = self._dict_to_xml(value, key)
-                    elem.append(child)
-                elif not isinstance(value, (list, tuple)):
-                    child = ElementTree.Element(key)
-                    child.text = str(value)
-                    elem.append(child)
-                else:
-                    for val in value:
-                        child = ElementTree.Element(key)
-                        child.text = str(val)
-                        elem.append(child)
+            elem.text = unicode(data)
         return elem
 
     def render(self, data, tag=None):
         if data is None:
             return bytes()
-        return ElementTree.tostring(self._dict_to_xml(data, tag))
+        return ElementTree.tostring(self._data_to_xml(data, tag))
