@@ -29,6 +29,7 @@ class ModelViewSet(webapp2.RequestHandler):
             renderer.media_type.lower(): renderer
             for renderer in self.renderers
         }
+        self.media_renderer_map.update({'*/*': self.renderers[0]})
 
     def dispatch(self):
         """Dispatches the request.
@@ -56,13 +57,19 @@ class ModelViewSet(webapp2.RequestHandler):
             args = ()
         try:
             renderer = self.get_renderer()
+        except zennla_exceptions.UnacceptableRequest as e:
+            renderer = self.renderers[0]()
+            self.response.headers['Content-Type'] = renderer.media_type
+            self.response.write(renderer.render(e.detail))
+            self.response.status_int = e.status_code
+            return
+        try:
             pre_method_handler = getattr(self, 'pre_' + method_name, None)
             if pre_method_handler is not None:
                 pre_method_handler(*args, **kwargs)
             try:
                 response = method(*args, **kwargs)
             except zennla_exceptions.APIException as e:
-                renderer = renderer or JSONRenderer
                 self.response.headers['Content-Type'] = renderer.media_type
                 self.response.write(renderer.render(e.detail))
                 self.response.status_int = e.status_code
@@ -154,7 +161,7 @@ class ModelViewSet(webapp2.RequestHandler):
         serializer = self.get_serializer_class(*args, **kwargs)()
         obj = serializer.get_obj(id=kwargs.values()[0])
         data = serializer.serialize(obj)
-        self.response.write(self.get_renderer(data))
+        self.response.write(self.get_renderer().render(data))
 
     def post(self, *args, **kwargs):
         """
@@ -199,11 +206,11 @@ class ModelViewSet(webapp2.RequestHandler):
         Return the renderer to be used to render the response
         """
         request_media_type = self.request.headers.get(
-            'Accept', 'application/json'
+            'Accept', '*/*'
         ).lower()
-        renderer = self.media_renderer_map.get(request_media_type)
-        if not renderer:
+        renderer_class = self.media_renderer_map.get(request_media_type)
+        if not renderer_class:
             raise zennla_exceptions.UnacceptableRequest(
                 "Could not satisfy the request Accept header"
             )
-        return renderer
+        return renderer_class()
