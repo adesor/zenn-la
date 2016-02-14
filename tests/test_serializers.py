@@ -97,6 +97,4 @@ class SerializerTestCase(unittest.TestCase):
         key = TestModel(**self.sample_data).put()
         dict_repr = dict(self.sample_data)
         dict_repr.update({'id': key.id()})
-        self.assertEqual(
-            json.dumps(dict_repr), self.test_serializer.serialize(key.get())
-        )
+        self.assertEqual(dict_repr, self.test_serializer.serialize(key.get()))

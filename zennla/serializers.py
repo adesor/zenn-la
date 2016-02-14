@@ -5,7 +5,6 @@ Serializers have a two-fold purpose:
     - To validate and translate primitive data into ndb model fields
         and create/update an object
 """
-import json
 from google.appengine.ext import ndb
 from google.appengine.ext.db import BadValueError
 from zennla.exceptions import NonSerializableException, ValidationError
@@ -136,12 +135,12 @@ class ModelSerializer(object):
         `serializable` is either a queryset or a model object
         """
         if isinstance(serializable, ndb.Model):
-            return json.dumps(self.to_dict_repr(serializable))
+            return self.to_dict_repr(serializable)
         elif isinstance(serializable, ndb.Query):
             serializable = serializable.fetch()
-            return json.dumps([
+            return [
                 self.to_dict_repr(obj) for obj in serializable
-            ])
+            ]
         raise NonSerializableException(
             "Object of type {type} is not serializable".format(
                 type=type(serializable).__name__

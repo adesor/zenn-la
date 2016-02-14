@@ -210,6 +210,8 @@ To define custom viewsets, you can override `get()`, `put()`, `post()` and `dele
 
 - You can add filtering to the viewsets by listing the FilterSets in the `filter_backends` attribute (Discussed in detail [here](#filtering)).
 
+- You can support a number of media types by listing the renderers in the `renderers` attribute (Discussed in detail [here](#renderers))
+
 - Overriding `get_query()`: You can override `get_query()` to perform any filtering of the result set before serialization.
 
 - Overriding `get_serializer_class()`: You can override `get_serializer_class()` to choose a serializer class dynamically.
@@ -306,3 +308,12 @@ Response (200):
     }
 ]
 ```
+
+
+
+## Renderers
+Renderers are used to serialize a response into specific media types. They give a generic way of being able to handle various media types on the response, such as JSON encoded data or HTML output.
+
+By default Zenn-La provides a `JSONRenderer` and an `XMLRenderer`. You can define custom renderers by subclassing `BaseRenderer` and setting the `media_type` and `format` attributes, and overriding the `render()` method.
+
+The renderer is chosen corresponding to the `Accept` header set on the request (read [here](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)). If no satisfying renderer is found associated with the viewset, a `406 - Not Acceptable` response is returned. If no `Accept` header is set, the first renderer in the `renderers` list of the view set is used. By default, `ModelViewSet` uses `JSONRenderer`.
