@@ -7,7 +7,7 @@ setup(
   author = 'Abhinav Desor',
   author_email = 'abhinav.desor@gmail.com',
   url = 'https://github.com/adesor/zenn-la',
-  download_url = 'https://github.com/adesor/pokeball/tarball/0.4',
+  download_url = 'https://github.com/adesor/zenn-la/tarball/0.4',
   keywords = ['google app engine', 'app engine', 'gae', 'ndb', 'webapp2', 'rest', 'framework'],
   classifiers = [],
 )
