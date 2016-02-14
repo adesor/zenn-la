@@ -1,0 +1,408 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Zenn-la by adesor</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-dark.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/adesor/zenn-la">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/adesor/zenn-la/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/adesor/zenn-la/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Zenn-la</h1>
+          <p>A REST microframework for Google App Engine (webapp2 and ndb)</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/adesor">adesor</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>
+<a id="zenn-la" class="anchor" href="#zenn-la" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Zenn-La</h1>
+
+<p>A REST microframework for Google App Engine (webapp2 and ndb)</p>
+
+<h2>
+<a id="contents" class="anchor" href="#contents" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Contents</h2>
+
+<ul>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#example-usage">Example Usage</a></li>
+<li><a href="#custom-serializers">Custom Serializers</a></li>
+<li><a href="#validations">Validations</a></li>
+<li><a href="#viewsets">ViewSets</a></li>
+<li><a href="#routers">Routers</a></li>
+<li><a href="#filtering">Filtering</a></li>
+<li><a href="#renderers">Renderers</a></li>
+</ul>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation:</h2>
+
+<p>Install using <code>pip</code></p>
+
+<pre><code>$ pip install zennla
+</code></pre>
+
+<p>For help with adding third party Python packages in Google App Engine, read <a href="https://cloud.google.com/appengine/docs/python/tools/libraries27?hl=en">here</a></p>
+
+<h2>
+<a id="example-usage" class="anchor" href="#example-usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example Usage:</h2>
+
+<p>Suppose you have a model named <code>Pokemon</code>:</p>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> google.appengine.ext <span class="pl-k">import</span> ndb
+
+<span class="pl-k">class</span> <span class="pl-en">Pokemon</span>(<span class="pl-e">ndb</span>.<span class="pl-e">Model</span>):
+    name <span class="pl-k">=</span> ndb.StringProperty()
+    <span class="pl-c1">type</span> <span class="pl-k">=</span> ndb.StringProperty()
+    number <span class="pl-k">=</span> ndb.IntegerProperty()</pre></div>
+
+<p>Define a serializer for this model:</p>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> zennla.serializers <span class="pl-k">import</span> ModelSerializer
+
+<span class="pl-k">class</span> <span class="pl-en">PokemonSerializer</span>(<span class="pl-e">ModelSerializer</span>):
+    model <span class="pl-k">=</span> Pokemon</pre></div>
+
+<p>Define a viewset for this model:</p>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> zennla.viewsets <span class="pl-k">import</span> ModelViewSet
+
+<span class="pl-k">class</span> <span class="pl-en">PokemonViewSet</span>(<span class="pl-e">ModelViewSet</span>):
+    serializer_class <span class="pl-k">=</span> PokemonSerializer
+    model <span class="pl-k">=</span> Pokemon  <span class="pl-c"># Optional - uses serializer_class's `model` instance by default</span></pre></div>
+
+<p>Add a route to your resource linking a base URL to the viewset:</p>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">import</span> webapp2
+<span class="pl-k">from</span> zennla.routers <span class="pl-k">import</span> route
+
+app <span class="pl-k">=</span> webapp2.WSGIApplication([
+    route(<span class="pl-s"><span class="pl-pds">'</span>/pokemon<span class="pl-pds">'</span></span>, PokemonViewSet)
+])</pre></div>
+
+<p>...and you have a working API for the <code>Pokemon</code> model! It supports GET and POST on <code>pokemon/</code> and GET, PUT, DELETE on <code>pokemon/&lt;id&gt;/</code> by default.</p>
+
+<p>You can create a <code>Pokemon</code> object as:</p>
+
+<pre><code>{{base_url}}/pokemon/ [POST]
+Body:
+{
+    "name": "Bulbasaur",
+    "type": "Grass",
+    "number": 1
+}
+
+Response (201):
+{
+    "name": "Bulbasaur",
+    "type": "Grass",
+    "number": 1,
+    "id": 4785074604081152
+}
+</code></pre>
+
+<p>You can fetch your <code>Pokemon</code> resource as:</p>
+
+<pre><code>{{base_url}}/pokemon/ [GET]
+
+Response (200):
+[
+    {
+        "name": "Bulbasaur",
+        "type": "Grass",
+        "number": 1,
+        "id": 4785074604081152
+    }
+]
+</code></pre>
+
+<p>Or retrieve a specific <code>Pokemon</code> as:</p>
+
+<pre><code>{{base_url}}/pokemon/4785074604081152/ [GET]
+
+Response (200):
+{
+    "name": "Bulbasaur",
+    "type": "Grass",
+    "number": 1,
+    "id": 4785074604081152
+}
+</code></pre>
+
+<p>Or update a <code>Pokemon</code> as:</p>
+
+<pre><code>{{base_url}}/pokemon/4785074604081152/ [PUT]
+{
+    "name": "Bulbasaur",
+    "type": "Grass/Poison",
+    "number": 1
+}
+
+Response (200):
+{
+    "name": "Bulbasaur",
+    "type": "Grass/Poison",
+    "number": 1,
+    "id": 4785074604081152
+}
+</code></pre>
+
+<h2>
+<a id="custom-serializers" class="anchor" href="#custom-serializers" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Custom Serializers</h2>
+
+<p>You can set the following attributes in the <code>ModelSerializer</code> subclass</p>
+
+<ul>
+<li>
+<code>include_fields</code>: List of field names to be included in the serialized form of a model object.</li>
+<li>
+<code>exclude_fields</code>: List of field names to be excluded in the serialized form of a model object. Takes precedence over <code>include_fields</code>
+</li>
+<li>
+<code>translate_fields</code>: A dict mapping field names to the names used in serialized representation</li>
+</ul>
+
+<p>You can override <code>to_dict_repr</code> method to define your own dictionary representation of a model object.</p>
+
+<p>You can also add a method named as <code>get_&lt;field_name&gt;</code> to define a custom representation for that field.</p>
+
+<p>You can add pre and post save hooks (methods that run just before and after an object is written to the datastore respectively) by defining <code>pre_save(self, instance, data, validated_data)</code> and <code>post_save(self, instance, data, validated_data)</code> respectively.</p>
+
+<h3>
+<a id="example" class="anchor" href="#example" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example:</h3>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">class</span> <span class="pl-en">PokemonSerializer</span>(<span class="pl-e">ModelSerializer</span>):
+    model <span class="pl-k">=</span> Pokemon
+    include_fields <span class="pl-k">=</span> [<span class="pl-s"><span class="pl-pds">"</span>name<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>number<span class="pl-pds">"</span></span>]  <span class="pl-c"># Only include these fields</span>
+    translate_fields <span class="pl-k">=</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>number<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>code<span class="pl-pds">"</span></span>  <span class="pl-c"># Translate `number` to `code` in serialized representation</span>
+    }
+
+    <span class="pl-k">def</span> <span class="pl-en">get_name</span>(<span class="pl-smi">obj</span>):
+        <span class="pl-k">return</span> <span class="pl-s"><span class="pl-pds">"</span>Pokemon <span class="pl-pds">"</span></span> <span class="pl-k">+</span> obj.name</pre></div>
+
+<pre><code>{{base_url}}/pokemon/ [GET]
+[
+    {
+        "name": "Pokemon Bulbasaur",
+        "code": 1
+    }
+]
+</code></pre>
+
+<h2>
+<a id="validations" class="anchor" href="#validations" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Validations</h2>
+
+<p>The <code>ModelSerializer</code> by default performs a validation for field type on the input data. In addition to that, you can add your own field validations. You can also perform object level validations.
+The field validations should be methods in your <code>ModelSerializer</code> named as <code>validate_&lt;field_name&gt;</code>. The method should raise a <code>ValidationError</code> if the input field value is not valid, or return silently.
+You can define any object level validations by defining the <code>validate(self, data, model)</code> method.</p>
+
+<p>The validation flow is:</p>
+
+<ul>
+<li>basic validations</li>
+<li>field validations</li>
+<li>object level validation</li>
+</ul>
+
+<h3>
+<a id="example-1" class="anchor" href="#example-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example:</h3>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> zennla.exceptions <span class="pl-k">import</span> ValidationError
+
+<span class="pl-k">class</span> <span class="pl-en">PokemonSerializer</span>(<span class="pl-e">ModelSerializer</span>):
+    model <span class="pl-k">=</span> Pokemon
+
+    <span class="pl-k">def</span> <span class="pl-en">validate_name</span>(<span class="pl-smi"><span class="pl-smi">self</span></span>, <span class="pl-smi">field_value</span>):
+        <span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">        Only accept lower-case names</span>
+<span class="pl-s">        <span class="pl-pds">"""</span></span>
+        <span class="pl-k">if</span> field_value <span class="pl-k">!=</span> field_value.lower():
+            <span class="pl-k">raise</span> ValidationError(<span class="pl-s"><span class="pl-pds">"</span>Name must be lower case!<span class="pl-pds">"</span></span>)</pre></div>
+
+<pre><code>{{base_url}}/pokemon/ [POST]
+{
+    "name": "Mewtwo",
+    "type": "Psychic"
+    "number": 150
+}
+
+Response (400):
+{
+    "detail": "Name must be lower case!"
+}
+</code></pre>
+
+<h2>
+<a id="viewsets" class="anchor" href="#viewsets" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Viewsets</h2>
+
+<p>Viewsets are request handler classes which provide CRUD operations.
+To define custom viewsets, you can override <code>get()</code>, <code>put()</code>, <code>post()</code> and <code>delete()</code> or any other method corresponding to the allowed methods.</p>
+
+<h3>
+<a id="customizing" class="anchor" href="#customizing" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Customizing</h3>
+
+<ul>
+<li><p>You can also add pre and post method handler hooks to perform any actions. These should be defined as <code>pre_&lt;handler_method&gt;</code> or <code>post_&lt;handler_method&gt;</code>.</p></li>
+<li><p>You can add filtering to the viewsets by listing the FilterSets in the <code>filter_backends</code> attribute (Discussed in detail <a href="#filtering">here</a>).</p></li>
+<li><p>You can support a number of media types by listing the renderers in the <code>renderers</code> attribute (Discussed in detail <a href="#renderers">here</a>)</p></li>
+<li><p>Overriding <code>get_query()</code>: You can override <code>get_query()</code> to perform any filtering of the result set before serialization.</p></li>
+<li><p>Overriding <code>get_serializer_class()</code>: You can override <code>get_serializer_class()</code> to choose a serializer class dynamically.</p></li>
+<li><p>Overridding <code>get_model()</code>: You can override <code>get_model()</code> to choose a model dynamically. Defaults to the model defined by the <code>model</code> attribute or, if not defined, the <code>model</code> attribute of the <code>serializer_class</code>.</p></li>
+</ul>
+
+<h3>
+<a id="example-2" class="anchor" href="#example-2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example</h3>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">class</span> <span class="pl-en">PokemonViewSet</span>(<span class="pl-e">ModelViewSet</span>):
+    serializer_class <span class="pl-k">=</span> PokemonSerializer
+
+    <span class="pl-k">def</span> <span class="pl-en">pre_get</span>(<span class="pl-smi"><span class="pl-smi">self</span></span>, <span class="pl-k">*</span><span class="pl-smi">args</span>, <span class="pl-k">**</span><span class="pl-smi">kwargs</span>):
+        <span class="pl-c"># perform_some_action</span>
+        <span class="pl-k">return</span>
+
+    <span class="pl-k">def</span> <span class="pl-en">get_query</span>():
+        <span class="pl-s"><span class="pl-pds">"""</span></span>
+<span class="pl-s">        Only query on Grass type Pokemon</span>
+<span class="pl-s">        <span class="pl-pds">"""</span></span>
+        <span class="pl-k">return</span> Pokemon.query(Pokemon.type <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">'</span>grass<span class="pl-pds">'</span></span>)</pre></div>
+
+<h2>
+<a id="routers" class="anchor" href="#routers" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Routers</h2>
+
+<p>Routers provide routing mechanism for resources. It contains a <code>route()</code> function which returns a <code>routes.PathPrefixRoute</code> (read <a href="https://webapp-improved.appspot.com/guide/routing.html#path-prefix-routes">here</a>) mapping a request handler <code>viewset</code> with a <code>base_url</code>.</p>
+
+<p>The <code>viewset</code> must:</p>
+
+<ul>
+<li>have <code>get()</code>, <code>post()</code>, <code>put()</code>, <code>delete()</code> defined
+or</li>
+<li>extend <code>viewset.ModelViewSet</code>
+</li>
+</ul>
+
+<p>The <code>routes.PathPrefixRoute</code> has two routes:</p>
+
+<ul>
+<li>The list view at <code>base_url</code>/ with URI: <code>base_url</code>-list</li>
+<li>The detail view at <code>base_url</code>/ with URL <code>base_url</code>-detail</li>
+</ul>
+
+<p>Optional Parameters:</p>
+
+<ul>
+<li>
+<code>detail_field</code>: The name of the field used to identify a resource</li>
+<li>
+<code>allowed_list_methods</code>: List of HTTP methods allowed for list view.
+    Default is [GET, POST]</li>
+<li>
+<code>allowed_detail_methods</code>: List of HTTP methods allowed for
+    detail view. Default is [GET, PUT, DELETE]</li>
+</ul>
+
+<h2>
+<a id="filtering" class="anchor" href="#filtering" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Filtering</h2>
+
+<p>You can create filters by extending the <code>FilterSet</code> class. The <code>FilterSet</code> class lists all the filters that need to be applied to a query and contains a method <code>get_filtered_query()</code> which filters the query using the listed filters. The FilterSet must have an attribute whose name becomes a query parameter and value is equal to one of the <code>FieldFilter</code>s. The <code>FieldFilter</code>s defined by default are:</p>
+
+<ul>
+<li>
+<code>NumberFilter</code>: Use this to make a filter that takes numeric values</li>
+<li>
+<code>BooleanFilter</code>: Use this to make a filter that takes boolean values</li>
+<li>
+<code>StringFilter</code>: Use this to make a filter that takes string values</li>
+</ul>
+
+<p>A <code>FilterField</code> needs to be specified an ndb model field on which it should be applied. It also has a <code>lookup_type</code> attribute which can be used to define the type of lookup. The valid values are:</p>
+
+<ul>
+<li>
+<code>'eq'</code>: Check for equality (default)</li>
+<li>
+<code>'in'</code>: Compare against a list of values</li>
+<li>
+<code>'ne'</code>: Check for inequality</li>
+<li>
+<code>'le'</code>: Check for less than or equals (&lt;=)</li>
+<li>
+<code>'ge'</code>: Check for greater than or equals (&gt;=)</li>
+<li>
+<code>'lt'</code>: Check for less than (&lt;)</li>
+<li>
+<code>'gt'</code>: Check for greater than (&gt;)</li>
+</ul>
+
+<p>You can create your own FilterFields by overriding <code>get_converted_value()</code> which takes in a raw value (string) and converts it into the format required before any comparisons are done.</p>
+
+<h3>
+<a id="example-3" class="anchor" href="#example-3" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example</h3>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> zennla <span class="pl-k">import</span> filters
+
+<span class="pl-k">class</span> <span class="pl-en">PokemonFilter</span>(<span class="pl-e">filters</span>.<span class="pl-e">FilterSet</span>):
+    name <span class="pl-k">=</span> filters.StringFilter(Pokemon.name)
+    <span class="pl-c1">type</span> <span class="pl-k">=</span> filters.StringFilter(Pokemon.type, <span class="pl-v">lookup_type</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>in<span class="pl-pds">'</span></span>)
+    num_ge <span class="pl-k">=</span> filters.NumberFilter(Pokemon.number, <span class="pl-v">lookup_type</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">'</span>ge<span class="pl-pds">'</span></span>)
+
+<span class="pl-k">class</span> <span class="pl-en">PokemonViewSet</span>(<span class="pl-e">ModelViewSet</span>):
+    serializer_class <span class="pl-k">=</span> PokemonSerializer
+    filter_backends <span class="pl-k">=</span> [PokemonFilter]  <span class="pl-c"># Add the filterset to our viewset</span>
+</pre></div>
+
+<pre><code>{{base_url}}/pokemon/?name='Mewtwo'&amp;type='Grass'&amp;type='Psychic'&amp;type='Electric'&amp;num_ge=75 [GET]
+{
+    "name": "Mewtwo",
+    "type": "Psychic"
+    "number": 150
+}
+
+Response (200):
+[
+    {
+        "name": "Mewtwo",
+        "type": "Psychic"
+        "number": 150
+    }
+]
+</code></pre>
+
+<h2>
+<a id="renderers" class="anchor" href="#renderers" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Renderers</h2>
+
+<p>Renderers are used to serialize a response into specific media types. They give a generic way of being able to handle various media types on the response, such as JSON encoded data or HTML output.</p>
+
+<p>By default Zenn-La provides a <code>JSONRenderer</code> and an <code>XMLRenderer</code>. You can define custom renderers by subclassing <code>BaseRenderer</code> and setting the <code>media_type</code> and <code>format</code> attributes, and overriding the <code>render()</code> method.</p>
+
+<p>The renderer is chosen corresponding to the <code>Accept</code> header set on the request (read <a href="https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html">here</a>). If no satisfying renderer is found associated with the viewset, a <code>406 - Not Acceptable</code> response is returned. If no <code>Accept</code> header is set, the first renderer in the <code>renderers</code> list of the view set is used. By default, <code>ModelViewSet</code> uses <code>JSONRenderer</code>.</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
