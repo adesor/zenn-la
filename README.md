@@ -9,6 +9,7 @@ A REST microframework for Google App Engine (webapp2 and ndb)
 * [ViewSets](#viewsets)
 * [Routers](#routers)
 * [Filtering](#filtering)
+* [Renderers](#renderers)
 
 ## Installation:
 Install using `pip`
